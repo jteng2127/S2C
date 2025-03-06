@@ -85,7 +85,7 @@ class model_WSSS():
         self.net_main = resnet38d.Net_CAM(C=self.C, D=self.D)
 
         # Initialize networks with ImageNet pretrained weight
-        self.net_main.load_state_dict(resnet38d.convert_mxnet_to_torch('./pretrained/resnet_38d.params'), strict=False)
+        self.net_main.load_state_dict(resnet38d.convert_mxnet_to_torch(os.path.join(os.getenv('PRETRAINED_DIR'), 'resnet_38d.params')), strict=False)
 
     # Save networks
     def save_model(self, epo, ckpt_path):

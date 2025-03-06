@@ -14,6 +14,8 @@ from torchvision import transforms
 import voc12
 import cv2
 
+VOC2012_DIR = os.getenv('VOC2012_DIR')
+
 def cam_on_image(img, cam):
     
     heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
@@ -360,7 +362,7 @@ def crf_inference(img, probs, t=10, scale_factor=1, labels=21):
     return np.array(Q).reshape((n_labels, h, w))
 
 def _crf_with_alpha(cam_dict, img, alpha=10):
-        orig_img = np.ascontiguousarray(np.uint8(Image.open(os.path.join('./data/VOC2012/JPEGImages', img + '.jpg'))))
+        orig_img = np.ascontiguousarray(np.uint8(Image.open(os.path.join(os.path.join(VOC2012_DIR, 'JPEGImages'), img + '.jpg'))))
         mean_img = [0.485, 0.456, 0.406]
         std_img = [0.229, 0.224, 0.225]
 
@@ -399,7 +401,7 @@ def _crf_with_alpha_rrm(ori_img, cam_dict, alpha):
 
 
 def _crf_with_alpha_nodict(cam_dict, img, alpha=10):
-    # orig_img = np.ascontiguousarray(np.uint8(Image.open(os.path.join('./data/VOC2012/JPEGImages', img + '.jpg'))))
+    # orig_img = np.ascontiguousarray(np.uint8(Image.open(os.path.join(VOC2012_DIR, 'JPEGImages', img + '.jpg'))))
     mean_img = [0.485, 0.456, 0.406]
     std_img = [0.229, 0.224, 0.225]
 
@@ -466,7 +468,7 @@ def crf_dl(name, probs, t=10, scale_factor=1, labels=21):
 
 
 
-    image_path = os.path.join('./data/VOC2012/JPEGImages', name + '.jpg')
+    image_path = os.path.join(VOC2012_DIR, 'JPEGImages', name + '.jpg')
     img = cv2.imread(image_path, cv2.IMREAD_COLOR).astype(np.float32)
     # img = img - np.array([104.008,116.669,122.675]) #Not used
     img = np.ascontiguousarray(np.uint8(img))

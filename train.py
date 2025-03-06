@@ -1,6 +1,9 @@
 from __future__ import division
 from __future__ import print_function
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import os.path as osp
 from tqdm import tqdm
@@ -22,6 +25,7 @@ from matplotlib import pyplot as plt
 import tools.utils as utils
 from evaluation import eval_in_script
 
+
 if __name__ == '__main__':
 
     categories = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
@@ -37,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument("--batch_size", default=8, type=int)
     parser.add_argument("--use_se", action='store_true')
-    parser.add_argument("--se_path", default='./se/default', type=str)
+    parser.add_argument("--se_path", default=os.getenv('SE_DIR'), type=str)
 
     # Augmentation
     parser.add_argument("--resize", default=[256, 512], nargs='+', type=float)

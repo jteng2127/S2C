@@ -7,6 +7,10 @@ import multiprocessing
 import argparse
 import pdb
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+VOC2012_DIR = os.getenv('VOC2012_DIR')
 
 ################################################################################
 # Evaluate the performance by computing mIoU.
@@ -132,9 +136,8 @@ def do_python_eval(predict_folder, gt_folder, name_list, num_cls, task, threshol
     return loglist
 
 
-def eval_in_script(logger=None, eval_list='train', task='cam', pred_dir=None, gt_dir='./data/VOC2012/SegmentationClass'):
-    
-    eval_list = './data/VOC2012/ImageSets/Segmentation/' + eval_list + '.txt'
+def eval_in_script(logger=None, eval_list='train', task='cam', pred_dir=None, gt_dir=os.path.join(VOC2012_DIR, 'SegmentationClass')):
+    eval_list = os.path.join(VOC2012_DIR, 'ImageSets/Segmentation/') + eval_list + '.txt'
     df = pd.read_csv(eval_list, names=['filename'])
     name_list = df['filename'].values
 
@@ -197,12 +200,12 @@ if __name__ == '__main__':
     parser.add_argument("--list", default="train", type=str)
     parser.add_argument("--task", required=True, type=str)
     parser.add_argument("--pred_dir", required=True, type=str)
-    parser.add_argument("--gt_dir", default='./data/VOC2012/SegmentationClass', type=str)
+    parser.add_argument("--gt_dir", default=os.path.join(VOC2012_DIR, 'SegmentationClass'), type=str)
     parser.add_argument("--start", default=0.15, type=float)
     
     args = parser.parse_args()
 
-    eval_list = './data/VOC2012/ImageSets/Segmentation/' + args.list + '.txt'
+    eval_list = os.path.join(VOC2012_DIR, 'ImageSets/Segmentation/') + args.list + '.txt'
     df = pd.read_csv(eval_list, names=['filename'])
     name_list = df['filename'].values
 

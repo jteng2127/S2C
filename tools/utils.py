@@ -63,7 +63,7 @@ class PolyOptimizer_adam(torch.optim.Adam):
 
 def make_path(args):
 
-    exp_path = osp.join('./experiments', args.name)
+    exp_path = osp.join(os.getenv("EXPERIMENT_DIR"), args.name)
     ckpt_path = osp.join(exp_path, 'ckpt')
     train_path = osp.join(exp_path, 'train')
     val_path = osp.join(exp_path, 'val')
@@ -93,7 +93,7 @@ def make_path(args):
 
 def make_path_with_log(args):
 
-    exp_path = osp.join('./experiments', args.name)
+    exp_path = osp.join(os.getenv("EXPERIMENT_DIR"), args.name)
     ckpt_path = osp.join(exp_path, 'ckpt')
     train_path = osp.join(exp_path, 'train')
     val_path = osp.join(exp_path, 'val')
@@ -122,7 +122,7 @@ def make_path_with_log(args):
     return exp_path, ckpt_path, train_path, val_path, infer_path, dict_path, crf_path, log_path
 
 
-def build_dataset(args, phase='train', path="voc12/train_aug.txt", root='./data/VOC2012'):
+def build_dataset(args, phase='train', path="voc12/train_aug.txt", root=os.getenv('VOC2012_DIR')):
 
     tf_list = []
     
@@ -157,7 +157,7 @@ def build_dataset(args, phase='train', path="voc12/train_aug.txt", root='./data/
     
     return dataset
 
-def build_dataset_sam(args, phase='train', path="voc12/train_aug.txt", root='./data/VOC2012', use_se=False, se_path=None):
+def build_dataset_sam(args, phase='train', path="voc12/train_aug.txt", root=os.getenv('VOC2012_DIR'), use_se=False, se_path=None):
 
     tf_list = []
     tf_list.append(np.asarray)
@@ -178,7 +178,7 @@ def build_dataset_sam(args, phase='train', path="voc12/train_aug.txt", root='./d
     return dataset
 
 
-def build_dataset_dl(phase='train', path="voc12/train.txt", gt_path='', root='./data/VOC2012'):
+def build_dataset_dl(phase='train', path="voc12/train.txt", gt_path='', root=os.getenv('VOC2012_DIR')):
     
     if phase=='train':
         dataset = voc12.data.VOC12ImageSegDataset(gt_path, path, voc12_root=root)
@@ -194,7 +194,7 @@ def build_dataset_dl(phase='train', path="voc12/train.txt", gt_path='', root='./
     return dataset
 
 
-def build_dataset_moco(args, phase='train', path="voc12/train_aug.txt", root='./data/VOC2012'):
+def build_dataset_moco(args, phase='train', path="voc12/train_aug.txt", root=os.getenv('VOC2012_DIR')):
 
     tf_list = []
     tf_list.append(np.asarray)
@@ -217,7 +217,7 @@ def build_dataset_moco(args, phase='train', path="voc12/train_aug.txt", root='./
     return dataset
 
 
-def build_dataset_recon(args, phase='train', path="voc12/train_aug.txt", root='./data/VOC2012'):
+def build_dataset_recon(args, phase='train', path="voc12/train_aug.txt", root=os.getenv('VOC2012_DIR')):
 
     tf_list = []
     tf_list.append(np.asarray)
