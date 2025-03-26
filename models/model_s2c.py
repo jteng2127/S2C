@@ -356,6 +356,20 @@ class model_WSSS():
         else:
             self.loss_cpm = torch.zeros_like(self.loss_cls)
 
+        # Accumulate individual losses
+        self.running_loss[0] += self.loss_cls.item()  # loss_cls corresponds to 'loss_cls'
+        self.running_loss[1] += self.loss_ssc.item()  # loss_ssc corresponds to 'loss_ssc'
+        self.running_loss[2] += self.loss_cpm.item()  # loss_cpm corresponds to 'loss_cpm'
+
+        # label-based accuracy
+        with torch.no_grad():
+            pred_labels = (pred_main > 0.5).long()  # Convert logits to binary predictions (assuming binary classification)
+            self.right_count[0] += torch.sum((pred_labels == self.label) == 1).item()
+            self.wrong_count[0] += torch.sum((pred_labels == self.label) == 0).item()
+        
+        # Count number of updates
+        self.count += 1
+
         loss.backward()
         self.opt_main.step()
     

@@ -21,11 +21,13 @@ You need to specify place VOC2012 under ./data folder.
 * Please specify the name of your experiment.
 * Training results are saved at ./experiment/[exp_name]
 ```
+python train.py --name s2c_exp2 --model s2c
 python train.py --name [exp_name] --model s2c
 ```
 
 ### Evaluation for CAM
 ```
+python inference.py --name 250320_s2c_s2c_exp2 --model s2c --vis --dict --crf --debug
 python evaluation.py --name [exp_name] --task cam --dict_dir dict
 ```
 

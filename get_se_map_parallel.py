@@ -15,6 +15,11 @@ from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 from dotenv import load_dotenv
 load_dotenv()
 
+# import debugpy
+# debugpy.listen(("0.0.0.0", 5678))
+# print("Waiting for debugger to attach...")
+# debugpy.wait_for_client()  # Pause execution until debugger is attached
+
 # paths
 root_path = '.'
 sam_path = os.path.join(os.getenv('PRETRAINED_DIR'), 'sam_vit_h.pth')

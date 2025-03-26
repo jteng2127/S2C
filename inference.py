@@ -25,14 +25,10 @@ from matplotlib import pyplot as plt
 import tools.utils as utils
 from evaluation import eval_in_script
 
-# Start a debug server and listen on port 5678
-# import debugpy
-# debugpy.listen(("0.0.0.0", 5678))
-# print("Waiting for debugger to attach...")
-# debugpy.wait_for_client()  # Pause execution until debugger is attached
-
-def get_args():
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--epoch", default=0, type=int)
 
     # Dataset
     parser.add_argument("--train_list", default="voc12/train_aug.txt", type=str)
@@ -77,26 +73,13 @@ def get_args():
     parser.add_argument("--debug", action='store_true')
 
     args = parser.parse_args()
-    args.name = time.strftime("%y%m%d") + '_' + args.model + '_' + args.name
+    # args.name = time.strftime("%y%m%d") + '_' + args.model + '_' + args.name
     print(args.name)
+    
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
 
-    return args
-
-def init_seed(seed: float):
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-
-
-if __name__ == '__main__':
-
-    categories = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
-                  'bus', 'car', 'cat', 'chair', 'cow',
-                  'diningtable', 'dog', 'horse', 'motorbike', 'person',
-                  'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
-
-    args = get_args()
-    init_seed(args.seed)
     exp_path, ckpt_path, train_path, val_path, infer_path, dict_path, crf_path, log_path = utils.make_path_with_log(args)
     
     # Logger
@@ -110,7 +93,7 @@ if __name__ == '__main__':
     logger.addHandler(file_handler)
 
     # Tensorboard
-    writer = SummaryWriter(log_dir=exp_path)
+    # writer = SummaryWriter(log_dir=exp_path)
 
     logger.info('-'*52 + ' SETUP ' + '-'*52)
     for arg in vars(args):
@@ -124,7 +107,7 @@ if __name__ == '__main__':
     val_dataset = utils.build_dataset_sam(args, phase='val', path=args.val_list, use_se=True, se_path=args.se_path)
 
     # train_dataset = Subset(train_dataset, range(0, 50))
-    # val_dataset = Subset(val_dataset, range(0, 5))
+    val_dataset = Subset(val_dataset, range(500, len(val_dataset)))
 
     train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=4)
     val_data_loader = DataLoader(val_dataset, shuffle=False, pin_memory=True)
@@ -139,76 +122,29 @@ if __name__ == '__main__':
     args.max_step = max_step
 
     # Load Model
-    model = getattr(importlib.import_module('models.model_'+args.model), 'model_WSSS')(args, logger=logger, writer=writer)
-    os.system('cp ./models/model_' + args.model + '.py ' + exp_path + '/')
-
-    #
-    if args.debug:
-        model.load_model(0,ckpt_path)
-    #
+    model = getattr(importlib.import_module('models.model_'+args.model), 'model_WSSS')(args, logger=logger)
+    model.load_model(args.epoch, ckpt_path)
 
     model.train_setup()
+    model.set_phase('eval')
+    model.infer_init()
+
+    print(f"vis_path: {val_path}")
+    print(f"dict_path: {dict_path}")
+    print(f"crf_path: {crf_path}")
+    for iter, pack in enumerate(tqdm(val_data_loader)):
+        model.unpack(pack)
+        model.infer_multi(args.epoch, val_path, dict_path, crf_path, vis=args.vis, dict=args.dict, crf=args.crf)
+
+    eval_dict = eval_in_script(logger=logger, eval_list='train', pred_dir=dict_path)
+
+    th_temp = eval_dict['th']
+    miou_temp = eval_dict['miou']
+    mp_temp = eval_dict['mp']
+    mr_temp = eval_dict['mr']
     
+    epo_str = str(args.epoch).zfill(3)
+    miou_temp_str = str(round(miou_temp,3))
+    th_temp_str = str(round(th_temp,3))
+    logger.info('Epoch ' + epo_str + ' max miou : ' + miou_temp_str + ' at ' + th_temp_str)
 
-    logger.info('-' * 111)
-    logger.info(('-' * 49) + ' Start Train ' + ('-' * 49))
-
-    miou_list = []
-    max_miou = 0
-    
-    count = 0
-
-    for epo in range(args.max_epochs):
-        epo_str = str(epo).zfill(3)
-
-        # Train
-        logger.info('-' * 111)
-        logger.info('Epoch ' + epo_str + ' train')
-        model.set_phase('train')
-
-        for iter, pack in enumerate(tqdm(train_data_loader)):
-            model.unpack(pack)
-            model.update(epo, iter)
-            if iter % args.print_freq == 0 and iter != 0:
-                model.print_log(epo + 1, count, writer)
-            
-            count += 1
-
-        logger.info('Epoch ' + epo_str + ' model is saved!')
-        model.save_model(epo, ckpt_path)
-
-        if epo<-1:
-            continue
-        else:
-            # # Validation
-            logger.info('-' * 111)
-            logger.info('Epoch ' + epo_str + ' validation')
-            model.set_phase('eval')
-            model.infer_init()
-            
-            for iter, pack in enumerate(tqdm(val_data_loader)):
-                model.unpack(pack)
-                model.infer_multi(epo, val_path, dict_path, crf_path, vis=(iter<20), dict=args.dict, crf=args.crf, writer=writer)
-            
-            # Evaluate mIoU
-            eval_dict = eval_in_script(logger=logger, eval_list='train', pred_dir=dict_path)
-            
-            th_temp = eval_dict['th']
-            miou_temp = eval_dict['miou']
-            mp_temp = eval_dict['mp']
-            mr_temp = eval_dict['mr']
-            
-            miou_temp_str = str(round(miou_temp,3))
-            th_temp_str = str(round(th_temp,3))
-            miou_list.append(miou_temp_str)
-            logger.info('Epoch ' + epo_str + ' max miou : ' + miou_temp_str + ' at ' + th_temp_str)
-            logger.info(miou_list)
-
-            if miou_temp>max_miou:
-                max_miou = miou_temp
-                logger.info('New record!')
-                
-            writer.add_scalar('val/miou', round(miou_temp,3), epo)
-            writer.add_scalar('val/th', round(th_temp,3), epo)
-            writer.add_scalar('val/precision', round(mp_temp,3), epo)
-            writer.add_scalar('val/recall', round(mr_temp,3), epo)

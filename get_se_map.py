@@ -34,6 +34,11 @@ import glob
 import pdb
 import tqdm
 
+# import debugpy
+# debugpy.listen(("0.0.0.0", 5678))
+# print("Waiting for debugger to attach...")
+# debugpy.wait_for_client()  # Pause execution until debugger is attached
+
 from dotenv import load_dotenv
 load_dotenv()
 
