@@ -43,7 +43,9 @@ class Sam(nn.Module):
         self.image_encoder = image_encoder
         self.prompt_encoder = prompt_encoder
         self.mask_decoder = mask_decoder
-        self.register_buffer("pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False)
+        self.register_buffer(
+            "pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False
+        )
         self.register_buffer("pixel_std", torch.Tensor(pixel_std).view(-1, 1, 1), False)
 
     @property
@@ -61,8 +63,9 @@ class Sam(nn.Module):
         features_sam=None,
         transformed_image=None,
         original_image_size=None,
-        point_coords=None, 
-        point_labels=None):
+        point_coords=None,
+        point_labels=None,
+    ):
         """
         Predicts masks end-to-end from provided images and prompts.
         If prompts are not known in advance, using SamPredictor is
@@ -101,88 +104,91 @@ class Sam(nn.Module):
                 shape BxCxHxW, where H=W=256. Can be passed as mask input
                 to subsequent iterations of prediction.
         """
-        
+
         ###
         if run_encoder_only:
-          self.original_size = original_image_size
-          self.input_size = tuple(transformed_image.shape[-2:])
-          input_image = self.preprocess(transformed_image)
-          features_sam = self.image_encoder(input_image)
-          return features_sam
-          
+            self.original_size = original_image_size
+            self.input_size = tuple(transformed_image.shape[-2:])
+            input_image = self.preprocess(transformed_image)
+            features_sam = self.image_encoder(input_image)
+            return features_sam
+
         if run_decoder_only and features_sam is not None:
-          
-          self.original_size = original_image_size
-          self.input_size = (1024,1024)
-          
-          if point_coords is not None:
-            points = (point_coords, point_labels)
-          else:
-              points = None
-          
-          # Embed prompts
-          sparse_embeddings, dense_embeddings = self.prompt_encoder(
-              points=points,
-              boxes=None,
-              masks=None,
-          )
 
-          # Predict masks
-          low_res_masks, iou_predictions = self.mask_decoder(
-              image_embeddings=features_sam,
-              image_pe=self.prompt_encoder.get_dense_pe(),
-              sparse_prompt_embeddings=sparse_embeddings,
-              dense_prompt_embeddings=dense_embeddings,
-              multimask_output=True,
-          )
+            self.original_size = original_image_size
+            self.input_size = (1024, 1024)
 
-          # Upscale the masks to the original image resolution
-          masks = self.postprocess_masks(low_res_masks, self.input_size, self.original_size)
+            if point_coords is not None:
+                points = (point_coords, point_labels)
+            else:
+                points = None
 
-          masks = masks > self.mask_threshold
+            # Embed prompts
+            sparse_embeddings, dense_embeddings = self.prompt_encoder(
+                points=points,
+                boxes=None,
+                masks=None,
+            )
 
-          return masks, iou_predictions, low_res_masks
-        
+            # Predict masks
+            low_res_masks, iou_predictions = self.mask_decoder(
+                image_embeddings=features_sam,
+                image_pe=self.prompt_encoder.get_dense_pe(),
+                sparse_prompt_embeddings=sparse_embeddings,
+                dense_prompt_embeddings=dense_embeddings,
+                multimask_output=True,
+            )
+
+            # Upscale the masks to the original image resolution
+            masks = self.postprocess_masks(
+                low_res_masks, self.input_size, self.original_size
+            )
+
+            masks = masks > self.mask_threshold
+
+            return masks, iou_predictions, low_res_masks
+
         ###
         if custom_forward:
-          self.original_size = original_image_size
-          self.input_size = tuple(transformed_image.shape[-2:])
-          input_image = self.preprocess(transformed_image)
-          self.features = self.image_encoder(input_image)
-                    
-          if point_coords is not None:
-            points = (point_coords, point_labels)
-          else:
-              points = None
+            self.original_size = original_image_size
+            self.input_size = tuple(transformed_image.shape[-2:])
+            input_image = self.preprocess(transformed_image)
+            self.features = self.image_encoder(input_image)
 
-          # Embed prompts
-          sparse_embeddings, dense_embeddings = self.prompt_encoder(
-              points=points,
-              boxes=None,
-              masks=None,
-          )
-          
-          # Predict masks
-          low_res_masks, iou_predictions = self.mask_decoder(
-              image_embeddings=self.features,
-              image_pe=self.prompt_encoder.get_dense_pe(),
-              sparse_prompt_embeddings=sparse_embeddings,
-              dense_prompt_embeddings=dense_embeddings,
-              multimask_output=True,
-          )
+            if point_coords is not None:
+                points = (point_coords, point_labels)
+            else:
+                points = None
 
-          # Upscale the masks to the original image resolution
-          masks = self.postprocess_masks(low_res_masks, self.input_size, self.original_size)
+            # Embed prompts
+            sparse_embeddings, dense_embeddings = self.prompt_encoder(
+                points=points,
+                boxes=None,
+                masks=None,
+            )
 
-          masks = masks > self.mask_threshold
+            # Predict masks
+            low_res_masks, iou_predictions = self.mask_decoder(
+                image_embeddings=self.features,
+                image_pe=self.prompt_encoder.get_dense_pe(),
+                sparse_prompt_embeddings=sparse_embeddings,
+                dense_prompt_embeddings=dense_embeddings,
+                multimask_output=True,
+            )
 
-          return masks, iou_predictions, low_res_masks
+            # Upscale the masks to the original image resolution
+            masks = self.postprocess_masks(
+                low_res_masks, self.input_size, self.original_size
+            )
+
+            masks = masks > self.mask_threshold
+
+            return masks, iou_predictions, low_res_masks
         ###
-        
-        
-        
-        
-        input_images = torch.stack([self.preprocess(x["image"]) for x in batched_input], dim=0)
+
+        input_images = torch.stack(
+            [self.preprocess(x["image"]) for x in batched_input], dim=0
+        )
         image_embeddings = self.image_encoder(input_images)
 
         outputs = []
@@ -246,7 +252,9 @@ class Sam(nn.Module):
             align_corners=False,
         )
         masks = masks[..., : input_size[0], : input_size[1]]
-        masks = F.interpolate(masks, original_size, mode="bilinear", align_corners=False)
+        masks = F.interpolate(
+            masks, original_size, mode="bilinear", align_corners=False
+        )
         return masks
 
     def preprocess(self, x: torch.Tensor) -> torch.Tensor:

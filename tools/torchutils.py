@@ -1,4 +1,3 @@
-
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
@@ -6,6 +5,7 @@ import os.path
 import random
 import numpy as np
 from tools import imutils
+
 
 class PolyOptimizer(torch.optim.SGD):
 
@@ -16,8 +16,7 @@ class PolyOptimizer(torch.optim.SGD):
         self.max_step = max_step
         self.momentum = momentum
 
-        self.__initial_lr = [group['lr'] for group in self.param_groups]
-
+        self.__initial_lr = [group["lr"] for group in self.param_groups]
 
     def step(self, closure=None):
 
@@ -25,7 +24,7 @@ class PolyOptimizer(torch.optim.SGD):
             lr_mult = (1 - self.global_step / self.max_step) ** self.momentum
 
             for i in range(len(self.param_groups)):
-                self.param_groups[i]['lr'] = self.__initial_lr[i] * lr_mult
+                self.param_groups[i]["lr"] = self.__initial_lr[i] * lr_mult
 
         super().step(closure)
 
@@ -40,23 +39,37 @@ class BatchNorm2dFixed(torch.nn.Module):
         self.eps = eps
         self.weight = torch.nn.Parameter(torch.Tensor(num_features))
         self.bias = torch.nn.Parameter(torch.Tensor(num_features))
-        self.register_buffer('running_mean', torch.zeros(num_features))
-        self.register_buffer('running_var', torch.ones(num_features))
-
+        self.register_buffer("running_mean", torch.zeros(num_features))
+        self.register_buffer("running_var", torch.ones(num_features))
 
     def forward(self, input):
 
         return F.batch_norm(
-            input, self.running_mean, self.running_var, self.weight, self.bias,
-            False, eps=self.eps)
+            input,
+            self.running_mean,
+            self.running_var,
+            self.weight,
+            self.bias,
+            False,
+            eps=self.eps,
+        )
 
     def __call__(self, x):
         return self.forward(x)
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, img_name_list_path, img_dir, label_dir, rescale=None, flip=False, cropsize=None,
-                 img_transform=None, mask_transform=None):
+    def __init__(
+        self,
+        img_name_list_path,
+        img_dir,
+        label_dir,
+        rescale=None,
+        flip=False,
+        cropsize=None,
+        img_transform=None,
+        mask_transform=None,
+    ):
         self.img_name_list_path = img_name_list_path
         self.img_dir = img_dir
         self.label_dir = label_dir
@@ -77,12 +90,12 @@ class SegmentationDataset(Dataset):
 
         name = self.img_name_list[idx]
 
-        img = Image.open(os.path.join(self.img_dir, name + '.jpg')).convert("RGB")
-        mask = Image.open(os.path.join(self.label_dir, name + '.png'))
+        img = Image.open(os.path.join(self.img_dir, name + ".jpg")).convert("RGB")
+        mask = Image.open(os.path.join(self.label_dir, name + ".png"))
 
         if self.rescale is not None:
             s = self.rescale[0] + random.random() * (self.rescale[1] - self.rescale[0])
-            adj_size = (round(img.size[0]*s/8)*8, round(img.size[1]*s/8)*8)
+            adj_size = (round(img.size[0] * s / 8) * 8, round(img.size[1] * s / 8) * 8)
             img = img.resize(adj_size, resample=Image.CUBIC)
             mask = img.resize(adj_size, resample=Image.NEAREST)
 
@@ -105,7 +118,7 @@ class SegmentationDataset(Dataset):
         return name, img, mask
 
 
-class ExtractAffinityLabelInRadius():
+class ExtractAffinityLabelInRadius:
 
     def __init__(self, cropsize, radius=5):
         self.radius = radius
@@ -116,11 +129,11 @@ class ExtractAffinityLabelInRadius():
             self.search_dist.append((0, x))
 
         for y in range(1, radius):
-            for x in range(-radius+1, radius):
-                if x*x + y*y < radius*radius:
+            for x in range(-radius + 1, radius):
+                if x * x + y * y < radius * radius:
                     self.search_dist.append((y, x))
 
-        self.radius_floor = radius-1
+        self.radius_floor = radius - 1
 
         self.crop_height = cropsize - self.radius_floor
         self.crop_width = cropsize - 2 * self.radius_floor
@@ -128,17 +141,24 @@ class ExtractAffinityLabelInRadius():
 
     def __call__(self, label):
 
-        labels_from = label[:-self.radius_floor, self.radius_floor:-self.radius_floor]
+        labels_from = label[
+            : -self.radius_floor, self.radius_floor : -self.radius_floor
+        ]
         labels_from = np.reshape(labels_from, [-1])
 
         labels_to_list = []
         valid_pair_list = []
 
         for dy, dx in self.search_dist:
-            labels_to = label[dy:dy+self.crop_height, self.radius_floor+dx:self.radius_floor+dx+self.crop_width]
+            labels_to = label[
+                dy : dy + self.crop_height,
+                self.radius_floor + dx : self.radius_floor + dx + self.crop_width,
+            ]
             labels_to = np.reshape(labels_to, [-1])
 
-            valid_pair = np.logical_and(np.less(labels_to, 255), np.less(labels_from, 255))
+            valid_pair = np.logical_and(
+                np.less(labels_to, 255), np.less(labels_from, 255)
+            )
 
             labels_to_list.append(labels_to)
             valid_pair_list.append(valid_pair)
@@ -149,22 +169,51 @@ class ExtractAffinityLabelInRadius():
 
         pos_affinity_label = np.equal(bc_labels_from, concat_labels_to)
 
-        bg_pos_affinity_label = np.logical_and(pos_affinity_label, np.equal(bc_labels_from, 0)).astype(np.float32)
+        bg_pos_affinity_label = np.logical_and(
+            pos_affinity_label, np.equal(bc_labels_from, 0)
+        ).astype(np.float32)
 
-        fg_pos_affinity_label = np.logical_and(np.logical_and(pos_affinity_label, np.not_equal(bc_labels_from, 0)), concat_valid_pair).astype(np.float32)
+        fg_pos_affinity_label = np.logical_and(
+            np.logical_and(pos_affinity_label, np.not_equal(bc_labels_from, 0)),
+            concat_valid_pair,
+        ).astype(np.float32)
 
-        neg_affinity_label = np.logical_and(np.logical_not(pos_affinity_label), concat_valid_pair).astype(np.float32)
+        neg_affinity_label = np.logical_and(
+            np.logical_not(pos_affinity_label), concat_valid_pair
+        ).astype(np.float32)
 
         return bg_pos_affinity_label, fg_pos_affinity_label, neg_affinity_label
 
+
 class AffinityFromMaskDataset(SegmentationDataset):
-    def __init__(self, img_name_list_path, img_dir, label_dir, rescale=None, flip=False, cropsize=None,
-                 img_transform=None, mask_transform=None, radius=5):
-        super().__init__(img_name_list_path, img_dir, label_dir, rescale, flip, cropsize, img_transform, mask_transform)
+    def __init__(
+        self,
+        img_name_list_path,
+        img_dir,
+        label_dir,
+        rescale=None,
+        flip=False,
+        cropsize=None,
+        img_transform=None,
+        mask_transform=None,
+        radius=5,
+    ):
+        super().__init__(
+            img_name_list_path,
+            img_dir,
+            label_dir,
+            rescale,
+            flip,
+            cropsize,
+            img_transform,
+            mask_transform,
+        )
 
         self.radius = radius
 
-        self.extract_aff_lab_func = ExtractAffinityLabelInRadius(cropsize=cropsize//8, radius=radius)
+        self.extract_aff_lab_func = ExtractAffinityLabelInRadius(
+            cropsize=cropsize // 8, radius=radius
+        )
 
     def __getitem__(self, idx):
         name, img, mask = super().__getitem__(idx)

@@ -2,31 +2,58 @@ import torch
 from torch import nn
 import numpy as np
 import pdb
+
 # from torch.nn.common_types import T
 
 import torch.nn.functional as F
 
+
 class ResBlock(nn.Module):
-    def __init__(self, in_channels, mid_channels, out_channels, stride=1, first_dilation=None, dilation=1):
+    def __init__(
+        self,
+        in_channels,
+        mid_channels,
+        out_channels,
+        stride=1,
+        first_dilation=None,
+        dilation=1,
+    ):
         super(ResBlock, self).__init__()
 
-        self.same_shape = (in_channels == out_channels and stride == 1)
+        self.same_shape = in_channels == out_channels and stride == 1
 
-        if first_dilation == None: first_dilation = dilation
+        if first_dilation == None:
+            first_dilation = dilation
 
         self.bn_branch2a = nn.BatchNorm2d(in_channels)
 
-        self.conv_branch2a = nn.Conv2d(in_channels, mid_channels, 3, stride,
-                                       padding=first_dilation, dilation=first_dilation, bias=False)
+        self.conv_branch2a = nn.Conv2d(
+            in_channels,
+            mid_channels,
+            3,
+            stride,
+            padding=first_dilation,
+            dilation=first_dilation,
+            bias=False,
+        )
 
         self.bn_branch2b1 = nn.BatchNorm2d(mid_channels)
 
-        self.conv_branch2b1 = nn.Conv2d(mid_channels, out_channels, 3, padding=dilation, dilation=dilation, bias=False)
+        self.conv_branch2b1 = nn.Conv2d(
+            mid_channels,
+            out_channels,
+            3,
+            padding=dilation,
+            dilation=dilation,
+            bias=False,
+        )
 
         if not self.same_shape:
-            self.conv_branch1 = nn.Conv2d(in_channels, out_channels, 1, stride, bias=False)
+            self.conv_branch1 = nn.Conv2d(
+                in_channels, out_channels, 1, stride, bias=False
+            )
 
-    def forward(self, x, get_x_bn_relu=False, start_imd = False):
+    def forward(self, x, get_x_bn_relu=False, start_imd=False):
 
         branch2 = self.bn_branch2a(x)
         branch2 = F.relu(branch2)
@@ -53,27 +80,39 @@ class ResBlock(nn.Module):
     def __call__(self, x, get_x_bn_relu=False):
         return self.forward(x, get_x_bn_relu=get_x_bn_relu)
 
+
 class ResBlock_bot(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, dilation=1, dropout=0.):
+    def __init__(self, in_channels, out_channels, stride=1, dilation=1, dropout=0.0):
         super(ResBlock_bot, self).__init__()
 
-        self.same_shape = (in_channels == out_channels and stride == 1)
+        self.same_shape = in_channels == out_channels and stride == 1
 
         self.bn_branch2a = nn.BatchNorm2d(in_channels)
-        self.conv_branch2a = nn.Conv2d(in_channels, out_channels//4, 1, stride, bias=False)
+        self.conv_branch2a = nn.Conv2d(
+            in_channels, out_channels // 4, 1, stride, bias=False
+        )
 
-        self.bn_branch2b1 = nn.BatchNorm2d(out_channels//4)
+        self.bn_branch2b1 = nn.BatchNorm2d(out_channels // 4)
         self.dropout_2b1 = torch.nn.Dropout2d(dropout)
-        self.conv_branch2b1 = nn.Conv2d(out_channels//4, out_channels//2, 3, padding=dilation, dilation=dilation, bias=False)
+        self.conv_branch2b1 = nn.Conv2d(
+            out_channels // 4,
+            out_channels // 2,
+            3,
+            padding=dilation,
+            dilation=dilation,
+            bias=False,
+        )
 
-        self.bn_branch2b2 = nn.BatchNorm2d(out_channels//2)
+        self.bn_branch2b2 = nn.BatchNorm2d(out_channels // 2)
         self.dropout_2b2 = torch.nn.Dropout2d(dropout)
-        self.conv_branch2b2 = nn.Conv2d(out_channels//2, out_channels, 1, bias=False)
+        self.conv_branch2b2 = nn.Conv2d(out_channels // 2, out_channels, 1, bias=False)
 
         if not self.same_shape:
-            self.conv_branch1 = nn.Conv2d(in_channels, out_channels, 1, stride, bias=False)
+            self.conv_branch1 = nn.Conv2d(
+                in_channels, out_channels, 1, stride, bias=False
+            )
 
-    def forward(self, x, get_x_bn_relu=False,start_imd=False):
+    def forward(self, x, get_x_bn_relu=False, start_imd=False):
         if not start_imd:
             branch2 = self.bn_branch2a(x)
             branch2 = F.relu(branch2)
@@ -103,10 +142,11 @@ class ResBlock_bot(nn.Module):
         return x
 
     def __call__(self, x, get_x_bn_relu=False, start_imd=False):
-        return self.forward(x, get_x_bn_relu=get_x_bn_relu,start_imd=start_imd)
+        return self.forward(x, get_x_bn_relu=get_x_bn_relu, start_imd=start_imd)
 
-class Normalize():
-    def __init__(self, mean = (0.485, 0.456, 0.406), std = (0.229, 0.224, 0.225)):
+
+class Normalize:
+    def __init__(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
 
         self.mean = mean
         self.std = std
@@ -115,11 +155,12 @@ class Normalize():
         imgarr = np.asarray(img)
         proc_img = np.empty_like(imgarr, np.float32)
 
-        proc_img[..., 0] = (imgarr[..., 0] / 255. - self.mean[0]) / self.std[0]
-        proc_img[..., 1] = (imgarr[..., 1] / 255. - self.mean[1]) / self.std[1]
-        proc_img[..., 2] = (imgarr[..., 2] / 255. - self.mean[2]) / self.std[2]
+        proc_img[..., 0] = (imgarr[..., 0] / 255.0 - self.mean[0]) / self.std[0]
+        proc_img[..., 1] = (imgarr[..., 1] / 255.0 - self.mean[1]) / self.std[1]
+        proc_img[..., 2] = (imgarr[..., 2] / 255.0 - self.mean[2]) / self.std[2]
 
         return proc_img
+
 
 def convert_mxnet_to_torch(filename):
     import mxnet
@@ -128,48 +169,54 @@ def convert_mxnet_to_torch(filename):
 
     renamed_dict = dict()
 
-    bn_param_mx_pt = {'beta': 'bias', 'gamma': 'weight', 'mean': 'running_mean', 'var': 'running_var'}
+    bn_param_mx_pt = {
+        "beta": "bias",
+        "gamma": "weight",
+        "mean": "running_mean",
+        "var": "running_var",
+    }
 
     for k, v in save_dict.items():
 
         v = torch.from_numpy(v.asnumpy())
-        toks = k.split('_')
+        toks = k.split("_")
 
-        if 'conv1a' in toks[0]:
-            renamed_dict['conv1a.weight'] = v
+        if "conv1a" in toks[0]:
+            renamed_dict["conv1a.weight"] = v
 
-        elif 'linear1000' in toks[0]:
+        elif "linear1000" in toks[0]:
             pass
 
-        elif 'branch' in toks[1]:
+        elif "branch" in toks[1]:
 
             pt_name = []
 
-            if toks[0][-1] != 'a':
-                pt_name.append('b' + toks[0][-3] + '_' + toks[0][-1])
+            if toks[0][-1] != "a":
+                pt_name.append("b" + toks[0][-3] + "_" + toks[0][-1])
             else:
-                pt_name.append('b' + toks[0][-2])
+                pt_name.append("b" + toks[0][-2])
 
-            if 'res' in toks[0]:
-                layer_type = 'conv'
-                last_name = 'weight'
+            if "res" in toks[0]:
+                layer_type = "conv"
+                last_name = "weight"
 
             else:  # 'bn' in toks[0]:
-                layer_type = 'bn'
+                layer_type = "bn"
                 last_name = bn_param_mx_pt[toks[-1]]
 
-            pt_name.append(layer_type + '_' + toks[1])
+            pt_name.append(layer_type + "_" + toks[1])
 
             pt_name.append(last_name)
 
-            torch_name = '.'.join(pt_name)
+            torch_name = ".".join(pt_name)
             renamed_dict[torch_name] = v
 
         else:
             last_name = bn_param_mx_pt[toks[-1]]
-            renamed_dict['bn7.' + last_name] = v
+            renamed_dict["bn7." + last_name] = v
 
     return renamed_dict
+
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
@@ -180,7 +227,7 @@ def weights_init_normal(m):
 class Net_CAM(nn.Module):
     def __init__(self, D=256, C=20):
         super(Net_CAM, self).__init__()
-        
+
         self.D = D
         self.C = C
 
@@ -254,14 +301,13 @@ class Net_CAM(nn.Module):
         feat = F.relu(self.fc8(x))  # B x D x 56 x 56
         cam = self.fc9(feat)
         pred = self.avgpool(cam).squeeze(3).squeeze(2)
-        
+
         out = {}
-        out['feat'] = feat
-        out['cam'] = cam
-        out['pred'] = pred        
+        out["feat"] = feat
+        out["cam"] = cam
+        out["pred"] = pred
 
         return out
-
 
     def train(self, mode=True):
 
@@ -292,7 +338,9 @@ class Net_CAM(nn.Module):
         groups = ([], [], [], [])
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -309,12 +357,10 @@ class Net_CAM(nn.Module):
         return groups
 
 
-
-
 class Net_CAM_seg(nn.Module):
     def __init__(self, D=256, C=20):
         super(Net_CAM_seg, self).__init__()
-        
+
         self.D = D
         self.C = C
 
@@ -400,18 +446,16 @@ class Net_CAM_seg(nn.Module):
         pred = self.avgpool(cam).squeeze(3).squeeze(2)
 
         # seg branch
-        x_seg = F.relu(self.fc8_seg(x))#originally no inplace
-        x_seg = self.fc9_seg(x_seg)#originally no inplace
+        x_seg = F.relu(self.fc8_seg(x))  # originally no inplace
+        x_seg = self.fc9_seg(x_seg)  # originally no inplace
 
-        
         out = {}
-        out['feat'] = feat
-        out['cam'] = cam
-        out['pred'] = pred
-        out['seg'] = x_seg        
+        out["feat"] = feat
+        out["cam"] = cam
+        out["pred"] = pred
+        out["seg"] = x_seg
 
         return out
-
 
     def train(self, mode=True):
 
@@ -442,7 +486,9 @@ class Net_CAM_seg(nn.Module):
         groups = ([], [], [], [])
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -457,10 +503,6 @@ class Net_CAM_seg(nn.Module):
                         groups[1].append(m.bias)
 
         return groups
-
-
-
-
 
 
 class Net_gpp(nn.Module):
@@ -495,11 +537,10 @@ class Net_gpp(nn.Module):
         self.fc8 = nn.Conv2d(4096, D, 1, bias=False)
         self.bn8 = nn.BatchNorm2d(D)
         self.fc9 = nn.Conv2d(D, C, 1, bias=False)
-        
-        self.gconv1 = gconv(20,20)
-        self.gconv2 = gconv(20,20)
-        self.gconv3 = gconv(20,20)
 
+        self.gconv1 = gconv(20, 20)
+        self.gconv2 = gconv(20, 20)
+        self.gconv3 = gconv(20, 20)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.dropout = nn.Dropout2d(0.3)
@@ -512,8 +553,8 @@ class Net_gpp(nn.Module):
 
     def forward(self, x):
 
-        B,_,H,W = x.size()
-        
+        B, _, H, W = x.size()
+
         x = self.conv1a(x)
 
         x = self.b2(x)
@@ -536,31 +577,50 @@ class Net_gpp(nn.Module):
         x = self.b5_1(x)
         x = self.b5_2(x)
 
-
-        x,b5 = self.b6(x,get_x_bn_relu=True)
+        x, b5 = self.b6(x, get_x_bn_relu=True)
         x = self.b7(x)
 
         x = F.relu(self.bn7(x))
 
         feat = F.relu(self.fc8(x))  # B x D x 56 x 56 #기존
         cam = self.fc9(feat)
-        
-        gap_2 = F.interpolate(F.adaptive_avg_pool2d(cam,(2,2)),size=cam.size()[2:],mode='bilinear',align_corners=False)
-        gap_4 = F.interpolate(F.adaptive_avg_pool2d(cam,(4,4)),size=cam.size()[2:],mode='bilinear',align_corners=False)
-        gap_8 = F.interpolate(F.adaptive_avg_pool2d(cam,(8,8)),size=cam.size()[2:],mode='bilinear',align_corners=False)
-        gap_16 = F.interpolate(F.adaptive_avg_pool2d(cam,(16,16)),size=cam.size()[2:],mode='bilinear',align_corners=False)
-        
-        att1 = self.gconv1(gap_2,gap_4)
-        att2 = self.gconv2(att1,gap_8)
-        gpp = self.gconv3(att2,gap_16)
-        
-        outs = self.avgpool(F.relu(cam)*F.relu(gpp)).squeeze(3).squeeze(2)
-        outs -= self.avgpool(F.relu(-cam)*F.relu(-gpp)).squeeze(3).squeeze(2)
+
+        gap_2 = F.interpolate(
+            F.adaptive_avg_pool2d(cam, (2, 2)),
+            size=cam.size()[2:],
+            mode="bilinear",
+            align_corners=False,
+        )
+        gap_4 = F.interpolate(
+            F.adaptive_avg_pool2d(cam, (4, 4)),
+            size=cam.size()[2:],
+            mode="bilinear",
+            align_corners=False,
+        )
+        gap_8 = F.interpolate(
+            F.adaptive_avg_pool2d(cam, (8, 8)),
+            size=cam.size()[2:],
+            mode="bilinear",
+            align_corners=False,
+        )
+        gap_16 = F.interpolate(
+            F.adaptive_avg_pool2d(cam, (16, 16)),
+            size=cam.size()[2:],
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        att1 = self.gconv1(gap_2, gap_4)
+        att2 = self.gconv2(att1, gap_8)
+        gpp = self.gconv3(att2, gap_16)
+
+        outs = self.avgpool(F.relu(cam) * F.relu(gpp)).squeeze(3).squeeze(2)
+        outs -= self.avgpool(F.relu(-cam) * F.relu(-gpp)).squeeze(3).squeeze(2)
 
         out = {}
-        out['feat'] = feat
-        out['cam'] = cam
-        out['pred'] = outs        
+        out["feat"] = feat
+        out["cam"] = cam
+        out["pred"] = outs
 
         return out
 
@@ -590,10 +650,12 @@ class Net_gpp(nn.Module):
 
     def get_parameter_groups(self):
         groups = ([], [], [], [])
-        print('======================================================')
+        print("======================================================")
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -611,36 +673,40 @@ class Net_gpp(nn.Module):
 
 
 class gconv(nn.Module):
-    def __init__(self,in_ch1,in_ch2):
-        super(gconv,self).__init__()
-        
+    def __init__(self, in_ch1, in_ch2):
+        super(gconv, self).__init__()
+
         self.att_p = nn.Sequential(
-                    nn.Conv2d(in_ch1*2, 2, 3,1,1,bias=False),
-                    nn.Sigmoid(),
-                )
+            nn.Conv2d(in_ch1 * 2, 2, 3, 1, 1, bias=False),
+            nn.Sigmoid(),
+        )
         self.att_n = nn.Sequential(
-                    nn.Conv2d(in_ch1*2, 2, 3,1,1,bias=False),
-                    nn.Sigmoid(),
-                )
-    
-    def forward(self,x,y):
-        n,c,h,w = y.size()
-        xy_p = torch.cat([F.relu(x),F.relu(y)],dim=1)
-        xy_n = torch.cat([F.relu(-x),F.relu(-y)],dim=1)
+            nn.Conv2d(in_ch1 * 2, 2, 3, 1, 1, bias=False),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x, y):
+        n, c, h, w = y.size()
+        xy_p = torch.cat([F.relu(x), F.relu(y)], dim=1)
+        xy_n = torch.cat([F.relu(-x), F.relu(-y)], dim=1)
         att_p = self.att_p(xy_p)
         att_n = self.att_n(xy_n)
-        final = (F.relu(x)*att_p[:,0].view(n,1,h,w)+F.relu(y)*att_p[:,1].view(n,1,h,w))/2
-        final -=(F.relu(-x)*att_n[:,0].view(n,1,h,w)+F.relu(-y)*att_n[:,1].view(n,1,h,w))/2
+        final = (
+            F.relu(x) * att_p[:, 0].view(n, 1, h, w)
+            + F.relu(y) * att_p[:, 1].view(n, 1, h, w)
+        ) / 2
+        final -= (
+            F.relu(-x) * att_n[:, 0].view(n, 1, h, w)
+            + F.relu(-y) * att_n[:, 1].view(n, 1, h, w)
+        ) / 2
 
         return final
-
-
 
 
 class Net_reCAM(nn.Module):
     def __init__(self, D=256, C=20):
         super(Net_reCAM, self).__init__()
-        
+
         self.D = D
         self.C = C
 
@@ -713,27 +779,25 @@ class Net_reCAM(nn.Module):
         x = F.relu(self.bn7(x))
 
         feat = F.relu(self.fc8(x))  # (B,D,H,W)
-        cam = self.fc9(feat) # (B,C,H,W)
+        cam = self.fc9(feat)  # (B,C,H,W)
         pred = self.avgpool(cam).squeeze(3).squeeze(2)
 
-        recam_feat = cam.unsqueeze(2)*feat.unsqueeze(1) # (B,C,D,H,W)
+        recam_feat = cam.unsqueeze(2) * feat.unsqueeze(1)  # (B,C,D,H,W)
 
-        B,C,D,H,W = recam_feat.shape
-        recam_feat = recam_feat.view(B*C,D,H,W)
+        B, C, D, H, W = recam_feat.shape
+        recam_feat = recam_feat.view(B * C, D, H, W)
 
-        recam = self.fc9_re(recam_feat) # (B*C,C,H,W)
-        recam_pred = self.avgpool(recam).squeeze(3).squeeze(2) # (B*C,C)
-        recam_pred = recam_pred.view(B,C,C) # (B,C,C)
-        
-        
+        recam = self.fc9_re(recam_feat)  # (B*C,C,H,W)
+        recam_pred = self.avgpool(recam).squeeze(3).squeeze(2)  # (B*C,C)
+        recam_pred = recam_pred.view(B, C, C)  # (B,C,C)
+
         out = {}
-        out['feat'] = feat
-        out['cam'] = cam
-        out['pred'] = pred
-        out['recam_pred'] = recam_pred
+        out["feat"] = feat
+        out["cam"] = cam
+        out["pred"] = pred
+        out["recam_pred"] = recam_pred
 
         return out
-
 
     def train(self, mode=True):
 
@@ -764,7 +828,9 @@ class Net_reCAM(nn.Module):
         groups = ([], [], [], [])
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -784,7 +850,7 @@ class Net_reCAM(nn.Module):
 class Net_CAM_sep(nn.Module):
     def __init__(self, D=256, C=20):
         super(Net_CAM_sep, self).__init__()
-        
+
         self.D = D
         self.C = C
 
@@ -817,7 +883,7 @@ class Net_CAM_sep(nn.Module):
         self.bn8 = nn.BatchNorm2d(D)
         self.fc9 = nn.Conv2d(D, C, 1, bias=False)
 
-        self.fc_sep = nn.Conv2d(D, D//2, 1, bias=False)
+        self.fc_sep = nn.Conv2d(D, D // 2, 1, bias=False)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.dropout = nn.Dropout2d(0.3)
@@ -863,14 +929,13 @@ class Net_CAM_sep(nn.Module):
         pred = self.avgpool(cam).squeeze(3).squeeze(2)
 
         feat = self.fc_sep(feat)
-        
+
         out = {}
-        out['feat'] = feat
-        out['cam'] = cam
-        out['pred'] = pred        
+        out["feat"] = feat
+        out["cam"] = cam
+        out["pred"] = pred
 
         return out
-
 
     def train(self, mode=True):
 
@@ -901,7 +966,9 @@ class Net_CAM_sep(nn.Module):
         groups = ([], [], [], [])
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -918,12 +985,10 @@ class Net_CAM_sep(nn.Module):
         return groups
 
 
-
-
 class Net_CAM_SAM(nn.Module):
     def __init__(self, D=256, C=20):
         super(Net_CAM_SAM, self).__init__()
-        
+
         self.D = D
         self.C = C
 
@@ -964,8 +1029,7 @@ class Net_CAM_SAM(nn.Module):
 
         self.from_scratch_layers = []
         self.not_training = [self.conv1a, self.b2, self.b2_1, self.b2_2]
-        
-    
+
     def train(self, mode=True):
 
         super().train(mode)
@@ -995,7 +1059,9 @@ class Net_CAM_SAM(nn.Module):
         groups = ([], [], [], [])
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -1041,44 +1107,42 @@ class Net_CAM_SAM(nn.Module):
         x = F.relu(self.bn7(x))
 
         feat = F.relu(self.fc8(x))  # B x D x 56 x 56
-        # feat = F.normalize(feat, dim=1)        
-        
+        # feat = F.normalize(feat, dim=1)
+
         cam = self.fc9(feat)
         pred = self.avgpool(cam).squeeze(3).squeeze(2)
-        
-        feat = F.interpolate(feat, (se.shape[2], se.shape[3]), mode='bilinear', align_corners=False)
+
+        feat = F.interpolate(
+            feat, (se.shape[2], se.shape[3]), mode="bilinear", align_corners=False
+        )
         feat_se = torch.zeros_like(feat)
         for idx in range(se.shape[0]):
-            for jdx, sdx in enumerate(se[idx,0].unique()):
-                if sdx==0 or jdx<2:
+            for jdx, sdx in enumerate(se[idx, 0].unique()):
+                if sdx == 0 or jdx < 2:
                     continue
                 else:
-                    mask = se[idx,0]==sdx
-                    feat_temp = feat[idx,:,mask]
-                    feat_se[idx,:,mask] = feat_temp.mean(dim=-1,keepdim=True)
+                    mask = se[idx, 0] == sdx
+                    feat_temp = feat[idx, :, mask]
+                    feat_se[idx, :, mask] = feat_temp.mean(dim=-1, keepdim=True)
 
         cam_se = self.fc9(feat_se)
         pred_se = self.avgpool(cam_se).squeeze(3).squeeze(2)
-        
+
         out = {}
-        out['feat'] = feat
-        out['feat_se'] = feat_se
-        out['cam'] = cam
-        out['cam_se'] = cam_se
-        out['pred'] = pred        
-        out['pred_se'] = pred_se
+        out["feat"] = feat
+        out["feat_se"] = feat_se
+        out["cam"] = cam
+        out["cam_se"] = cam_se
+        out["pred"] = pred
+        out["pred_se"] = pred_se
 
         return out
-
-
-
-
 
 
 class Net_eps(nn.Module):
     def __init__(self, D=256, C=20):
         super(Net_eps, self).__init__()
-        
+
         self.D = D
         self.C = C
 
@@ -1121,9 +1185,29 @@ class Net_eps(nn.Module):
         self.not_training = [self.conv1a, self.b2, self.b2_1, self.b2_2]
 
     def reset_cls_head(self):
-        self.not_training = [self.conv1a, self.b2, self.b2_1, self.b2_2, self.b3, self.b3_1, self.b3_2,
-                             self.b4, self.b4_1, self.b4_2, self.b4_3, self.b4_4, self.b4_5,
-                             self.b5, self.b5_1, self.b5_2, self.b6, self.b7, self.bn7, self.fc8, self.bn8]
+        self.not_training = [
+            self.conv1a,
+            self.b2,
+            self.b2_1,
+            self.b2_2,
+            self.b3,
+            self.b3_1,
+            self.b3_2,
+            self.b4,
+            self.b4_1,
+            self.b4_2,
+            self.b4_3,
+            self.b4_4,
+            self.b4_5,
+            self.b5,
+            self.b5_1,
+            self.b5_2,
+            self.b6,
+            self.b7,
+            self.bn7,
+            self.fc8,
+            self.bn8,
+        ]
         self.fc9 = nn.Conv2d(self.D, self.C, 1, bias=False)
         torch.nn.init.xavier_uniform_(self.fc9.weight)
 
@@ -1162,7 +1246,6 @@ class Net_eps(nn.Module):
 
         return feat, cam, pred
 
-
     def train(self, mode=True):
 
         super().train(mode)
@@ -1190,10 +1273,12 @@ class Net_eps(nn.Module):
 
     def get_parameter_groups(self):
         groups = ([], [], [], [])
-        print('======================================================')
+        print("======================================================")
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -1208,7 +1293,6 @@ class Net_eps(nn.Module):
                         groups[1].append(m.bias)
 
         return groups
-
 
 
 class Net_dl(nn.Module):
@@ -1248,7 +1332,7 @@ class Net_dl(nn.Module):
         self.b9 = nn.Conv2d(512, 21, 3, dilation=12, padding=12, bias=True)
 
         self.not_training = []  # self.conv1a, self.b2, self.b2_1, self.b2_2]
-        self.from_scratch_layers = [self.b8, self.b9] #original version on
+        self.from_scratch_layers = [self.b8, self.b9]  # original version on
 
         torch.nn.init.xavier_uniform_(self.b8.weight)
         torch.nn.init.xavier_uniform_(self.b9.weight)
@@ -1284,14 +1368,14 @@ class Net_dl(nn.Module):
         x, conv5 = self.b6(x, get_x_bn_relu=True)  # B x 1024 x 56 x 56
 
         x = self.b7(x)
-        x = F.relu(self.bn7(x))#originally no inplace
+        x = F.relu(self.bn7(x))  # originally no inplace
         # x = self.dropout(x)
 
-        x = F.relu(self.b8(x))#originally no inplace
+        x = F.relu(self.b8(x))  # originally no inplace
 
         x = self.b9(x)
 
-        x = F.interpolate(x, size=(H, W), mode='bilinear', align_corners=False)
+        x = F.interpolate(x, size=(H, W), mode="bilinear", align_corners=False)
 
         return x
 
@@ -1321,10 +1405,12 @@ class Net_dl(nn.Module):
 
     def get_parameter_groups(self):
         groups = ([], [], [], [])
-        print('======================================================')
+        print("======================================================")
         for m in self.modules():
 
-            if (isinstance(m, nn.Conv2d) or isinstance(m, nn.modules.normalization.GroupNorm)):
+            if isinstance(m, nn.Conv2d) or isinstance(
+                m, nn.modules.normalization.GroupNorm
+            ):
 
                 if m.weight.requires_grad:
                     if m in self.from_scratch_layers:
@@ -1379,7 +1465,7 @@ class Net(nn.Module):
         return
 
     def forward(self, x):
-        return self.forward_as_dict(x)['conv6']
+        return self.forward_as_dict(x)["conv6"]
 
     def forward_as_dict(self, x):
 
@@ -1393,7 +1479,7 @@ class Net(nn.Module):
         x = self.b3_1(x)
         x = self.b3_2(x)
 
-        #x = self.b4(x)
+        # x = self.b4(x)
         x, conv3 = self.b4(x, get_x_bn_relu=True)  # B x 256 x 56 x 56
         x = self.b4_1(x)
         x = self.b4_2(x)
@@ -1408,9 +1494,9 @@ class Net(nn.Module):
         x, conv5 = self.b6(x, get_x_bn_relu=True)  # B x 1024 x 56 x 56
 
         x = self.b7(x)
-        conv6 = F.relu(self.bn7(x)) # B x 4096 x 56 x 56
+        conv6 = F.relu(self.bn7(x))  # B x 4096 x 56 x 56
 
-        return dict({'conv3': conv3, 'conv4': conv4, 'conv5': conv5, 'conv6': conv6})
+        return dict({"conv3": conv3, "conv4": conv4, "conv5": conv5, "conv6": conv6})
 
     def forward_conv5(self, x):
 
@@ -1424,7 +1510,7 @@ class Net(nn.Module):
         x = self.b3_1(x)
         x = self.b3_2(x)
 
-        #x = self.b4(x)
+        # x = self.b4(x)
         x = self.b4(x)  # B x 256 x 56 x 56
         x = self.b4_1(x)
         x = self.b4_2(x)

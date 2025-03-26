@@ -40,33 +40,34 @@ import tqdm
 # debugpy.wait_for_client()  # Pause execution until debugger is attached
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-root_path = '.'
+root_path = "."
 
-sam_path = os.path.join(os.getenv('PRETRAINED_DIR'), 'sam_vit_h.pth')
-sam = sam_model_registry['vit_h'](checkpoint=sam_path)
-sam = sam.to('cuda')
+sam_path = os.path.join(os.getenv("PRETRAINED_DIR"), "sam_vit_h.pth")
+sam = sam_model_registry["vit_h"](checkpoint=sam_path)
+sam = sam.to("cuda")
 
 mask_generator = SamAutomaticMaskGenerator(sam)
 
-img_path = os.path.join(os.getenv('VOC2012_DIR'), 'JPEGImages')
-print(f'img_path: {img_path}')
-save_path = os.getenv('SE_DIR')
-print(f'save_path: {save_path}')
+img_path = os.path.join(os.getenv("VOC2012_DIR"), "JPEGImages")
+print(f"img_path: {img_path}")
+save_path = os.getenv("SE_DIR")
+print(f"save_path: {save_path}")
 os.makedirs(save_path, exist_ok=True)
 
-img_list_path = os.path.join(root_path, 'voc12', 'train_aug.txt')
+img_list_path = os.path.join(root_path, "voc12", "train_aug.txt")
 img_gt_name_list = open(img_list_path).read().splitlines()
-img_name_list = [img_gt_name.split(' ')[0][-15:-4] for img_gt_name in img_gt_name_list]
+img_name_list = [img_gt_name.split(" ")[0][-15:-4] for img_gt_name in img_gt_name_list]
 
 
 for name in tqdm.tqdm(img_name_list):
-    img = plt.imread(os.path.join(img_path, name+'.jpg'))
+    img = plt.imread(os.path.join(img_path, name + ".jpg"))
     masks = mask_generator.generate(img)
-    
-    temp = np.full((img.shape[0],img.shape[1]), -1, dtype=int)
+
+    temp = np.full((img.shape[0], img.shape[1]), -1, dtype=int)
     for i, mask in enumerate(reversed(masks)):
-        temp[mask['segmentation']] = i
-        
+        temp[mask["segmentation"]] = i
+
     np.save(os.path.join(save_path, name), temp)

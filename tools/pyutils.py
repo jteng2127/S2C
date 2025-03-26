@@ -1,7 +1,7 @@
-
 import numpy as np
 import time
 import sys
+
 
 class Logger(object):
     def __init__(self, outfile):
@@ -46,20 +46,18 @@ class AverageMeter:
 
 
 class Timer:
-    def __init__(self, starting_msg = None):
+    def __init__(self, starting_msg=None):
         self.start = time.time()
         self.stage_start = self.start
 
         if starting_msg is not None:
             print(starting_msg, time.ctime(time.time()))
 
-
     def update_progress(self, progress):
         self.elapsed = time.time() - self.start
         self.est_total = self.elapsed / progress
         self.est_remaining = self.est_total - self.elapsed
         self.est_finish = int(self.start + self.est_total)
-
 
     def str_est_finish(self):
         return str(time.ctime(self.est_finish))
@@ -72,6 +70,7 @@ class Timer:
 
 
 from multiprocessing.pool import ThreadPool
+
 
 class BatchThreader:
 
@@ -89,27 +88,23 @@ class BatchThreader:
         # initial work
         self.__start_works(self.__get_n_pending_works())
 
-
     def __start_works(self, times):
         for _ in range(times):
             args = self.left_args_list.pop(0)
-            self.async_result.append(
-                self.pool.apply_async(self.func, args))
-
+            self.async_result.append(self.pool.apply_async(self.func, args))
 
     def __get_n_pending_works(self):
-        return min((self.prefetch_size + 1) * self.batch_size - len(self.async_result)
-                   , len(self.left_args_list))
-
-
+        return min(
+            (self.prefetch_size + 1) * self.batch_size - len(self.async_result),
+            len(self.left_args_list),
+        )
 
     def pop_results(self):
 
         n_inwork = len(self.async_result)
 
         n_fetch = min(n_inwork, self.batch_size)
-        rtn = [self.async_result.pop(0).get()
-                for _ in range(n_fetch)]
+        rtn = [self.async_result.pop(0).get() for _ in range(n_fetch)]
 
         to_fill = self.__get_n_pending_works()
         if to_fill == 0:
@@ -118,8 +113,6 @@ class BatchThreader:
             self.__start_works(to_fill)
 
         return rtn
-
-
 
 
 def get_indices_of_pairs(radius, size):
@@ -136,20 +129,24 @@ def get_indices_of_pairs(radius, size):
 
     radius_floor = radius - 1
 
-    full_indices = np.reshape(np.arange(0, size[0]*size[1], dtype=np.int64),
-                                   (size[0], size[1]))
+    full_indices = np.reshape(
+        np.arange(0, size[0] * size[1], dtype=np.int64), (size[0], size[1])
+    )
 
     cropped_height = size[0] - radius_floor
     cropped_width = size[1] - 2 * radius_floor
 
-    indices_from = np.reshape(full_indices[:-radius_floor, radius_floor:-radius_floor],
-                              [-1])
+    indices_from = np.reshape(
+        full_indices[:-radius_floor, radius_floor:-radius_floor], [-1]
+    )
 
     indices_to_list = []
 
     for dy, dx in search_dist:
-        indices_to = full_indices[dy:dy + cropped_height,
-                     radius_floor + dx:radius_floor + dx + cropped_width]
+        indices_to = full_indices[
+            dy : dy + cropped_height,
+            radius_floor + dx : radius_floor + dx + cropped_width,
+        ]
         indices_to = np.reshape(indices_to, [-1])
 
         indices_to_list.append(indices_to)
@@ -158,31 +155,36 @@ def get_indices_of_pairs(radius, size):
 
     return indices_from, concat_indices_to
 
+
 def get_indices_of_pairs_circle(radius, size):
 
     search_dist = []
 
     for y in range(-radius + 1, radius):
         for x in range(-radius + 1, radius):
-            if x * x + y * y < radius * radius and x*x+y*y!=0:
+            if x * x + y * y < radius * radius and x * x + y * y != 0:
                 search_dist.append((y, x))
 
     radius_floor = radius - 1
 
-    full_indices = np.reshape(np.arange(0, size[0]*size[1], dtype=np.int64),
-                                   (size[0], size[1]))
+    full_indices = np.reshape(
+        np.arange(0, size[0] * size[1], dtype=np.int64), (size[0], size[1])
+    )
 
     cropped_height = size[0] - 2 * radius_floor
     cropped_width = size[1] - 2 * radius_floor
 
-    indices_from = np.reshape(full_indices[radius_floor:-radius_floor, radius_floor:-radius_floor],
-                              [-1])
+    indices_from = np.reshape(
+        full_indices[radius_floor:-radius_floor, radius_floor:-radius_floor], [-1]
+    )
 
     indices_to_list = []
 
     for dy, dx in search_dist:
-        indices_to = full_indices[radius_floor + dy : radius_floor + dy + cropped_height,
-                                  radius_floor + dx : radius_floor + dx + cropped_width]
+        indices_to = full_indices[
+            radius_floor + dy : radius_floor + dy + cropped_height,
+            radius_floor + dx : radius_floor + dx + cropped_width,
+        ]
         indices_to = np.reshape(indices_to, [-1])
 
         indices_to_list.append(indices_to)
@@ -196,11 +198,11 @@ def same_seeds(seed):
     import torch
     import numpy as np
     import random
-    
+
     torch.manual_seed(seed)
     if torch.cuda.is_available():
-      torch.cuda.manual_seed(seed)
-      torch.cuda.manual_seed_all(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
     torch.backends.cudnn.benchmark = False

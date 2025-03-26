@@ -2,25 +2,51 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class ResBlock(nn.Module):
-    def __init__(self, in_channels, mid_channels, out_channels, stride=1, first_dilation=None, dilation=1):
+    def __init__(
+        self,
+        in_channels,
+        mid_channels,
+        out_channels,
+        stride=1,
+        first_dilation=None,
+        dilation=1,
+    ):
         super(ResBlock, self).__init__()
 
-        self.same_shape = (in_channels == out_channels and stride == 1)
+        self.same_shape = in_channels == out_channels and stride == 1
 
-        if first_dilation == None: first_dilation = dilation
+        if first_dilation == None:
+            first_dilation = dilation
 
         self.bn_branch2a = nn.BatchNorm2d(in_channels)
 
-        self.conv_branch2a = nn.Conv2d(in_channels, mid_channels, 3, stride,
-                                       padding=first_dilation, dilation=first_dilation, bias=False)
+        self.conv_branch2a = nn.Conv2d(
+            in_channels,
+            mid_channels,
+            3,
+            stride,
+            padding=first_dilation,
+            dilation=first_dilation,
+            bias=False,
+        )
 
         self.bn_branch2b1 = nn.BatchNorm2d(mid_channels)
 
-        self.conv_branch2b1 = nn.Conv2d(mid_channels, out_channels, 3, padding=dilation, dilation=dilation, bias=False)
+        self.conv_branch2b1 = nn.Conv2d(
+            mid_channels,
+            out_channels,
+            3,
+            padding=dilation,
+            dilation=dilation,
+            bias=False,
+        )
 
         if not self.same_shape:
-            self.conv_branch1 = nn.Conv2d(in_channels, out_channels, 1, stride, bias=False)
+            self.conv_branch1 = nn.Conv2d(
+                in_channels, out_channels, 1, stride, bias=False
+            )
 
     def forward(self, x, get_x_bn_relu=False):
 
@@ -49,25 +75,37 @@ class ResBlock(nn.Module):
     def __call__(self, x, get_x_bn_relu=False):
         return self.forward(x, get_x_bn_relu=get_x_bn_relu)
 
+
 class ResBlock_bot(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, dilation=1, dropout=0.):
+    def __init__(self, in_channels, out_channels, stride=1, dilation=1, dropout=0.0):
         super(ResBlock_bot, self).__init__()
 
-        self.same_shape = (in_channels == out_channels and stride == 1)
+        self.same_shape = in_channels == out_channels and stride == 1
 
         self.bn_branch2a = nn.BatchNorm2d(in_channels)
-        self.conv_branch2a = nn.Conv2d(in_channels, out_channels//4, 1, stride, bias=False)
+        self.conv_branch2a = nn.Conv2d(
+            in_channels, out_channels // 4, 1, stride, bias=False
+        )
 
-        self.bn_branch2b1 = nn.BatchNorm2d(out_channels//4)
+        self.bn_branch2b1 = nn.BatchNorm2d(out_channels // 4)
         self.dropout_2b1 = torch.nn.Dropout2d(dropout)
-        self.conv_branch2b1 = nn.Conv2d(out_channels//4, out_channels//2, 3, padding=dilation, dilation=dilation, bias=False)
+        self.conv_branch2b1 = nn.Conv2d(
+            out_channels // 4,
+            out_channels // 2,
+            3,
+            padding=dilation,
+            dilation=dilation,
+            bias=False,
+        )
 
-        self.bn_branch2b2 = nn.BatchNorm2d(out_channels//2)
+        self.bn_branch2b2 = nn.BatchNorm2d(out_channels // 2)
         self.dropout_2b2 = torch.nn.Dropout2d(dropout)
-        self.conv_branch2b2 = nn.Conv2d(out_channels//2, out_channels, 1, bias=False)
+        self.conv_branch2b2 = nn.Conv2d(out_channels // 2, out_channels, 1, bias=False)
 
         if not self.same_shape:
-            self.conv_branch1 = nn.Conv2d(in_channels, out_channels, 1, stride, bias=False)
+            self.conv_branch1 = nn.Conv2d(
+                in_channels, out_channels, 1, stride, bias=False
+            )
 
     def forward(self, x, get_x_bn_relu=False):
 
@@ -99,8 +137,9 @@ class ResBlock_bot(nn.Module):
     def __call__(self, x, get_x_bn_relu=False):
         return self.forward(x, get_x_bn_relu=get_x_bn_relu)
 
-class Normalize():
-    def __init__(self, mean = (0.485, 0.456, 0.406), std = (0.229, 0.224, 0.225)):
+
+class Normalize:
+    def __init__(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
 
         self.mean = mean
         self.std = std
@@ -109,11 +148,12 @@ class Normalize():
         imgarr = np.asarray(img)
         proc_img = np.empty_like(imgarr, np.float32)
 
-        proc_img[..., 0] = (imgarr[..., 0] / 255. - self.mean[0]) / self.std[0]
-        proc_img[..., 1] = (imgarr[..., 1] / 255. - self.mean[1]) / self.std[1]
-        proc_img[..., 2] = (imgarr[..., 2] / 255. - self.mean[2]) / self.std[2]
+        proc_img[..., 0] = (imgarr[..., 0] / 255.0 - self.mean[0]) / self.std[0]
+        proc_img[..., 1] = (imgarr[..., 1] / 255.0 - self.mean[1]) / self.std[1]
+        proc_img[..., 2] = (imgarr[..., 2] / 255.0 - self.mean[2]) / self.std[2]
 
         return proc_img
+
 
 class Net_ori(nn.Module):
     def __init__(self):
@@ -153,7 +193,7 @@ class Net_ori(nn.Module):
         return
 
     def forward(self, x):
-        return self.forward_as_dict(x)['conv6']
+        return self.forward_as_dict(x)["conv6"]
 
     def forward_as_dict(self, x):
 
@@ -183,8 +223,7 @@ class Net_ori(nn.Module):
         x = self.b7(x)
         conv6 = F.relu(self.bn7(x))
 
-        return dict({'conv4': conv4, 'conv5': conv5, 'conv6': conv6})
-
+        return dict({"conv4": conv4, "conv5": conv5, "conv6": conv6})
 
     def train(self, mode=True):
 
@@ -210,6 +249,7 @@ class Net_ori(nn.Module):
 
         return
 
+
 def convert_mxnet_to_torch(filename):
     import mxnet
 
@@ -217,57 +257,53 @@ def convert_mxnet_to_torch(filename):
 
     renamed_dict = dict()
 
-    bn_param_mx_pt = {'beta': 'bias', 'gamma': 'weight', 'mean': 'running_mean', 'var': 'running_var'}
+    bn_param_mx_pt = {
+        "beta": "bias",
+        "gamma": "weight",
+        "mean": "running_mean",
+        "var": "running_var",
+    }
 
     for k, v in save_dict.items():
 
         v = torch.from_numpy(v.asnumpy())
-        toks = k.split('_')
+        toks = k.split("_")
 
-        if 'conv1a' in toks[0]:
-            renamed_dict['conv1a.weight'] = v
+        if "conv1a" in toks[0]:
+            renamed_dict["conv1a.weight"] = v
 
-        elif 'linear1000' in toks[0]:
+        elif "linear1000" in toks[0]:
             pass
 
-        elif 'branch' in toks[1]:
+        elif "branch" in toks[1]:
 
             pt_name = []
 
-            if toks[0][-1] != 'a':
-                pt_name.append('b' + toks[0][-3] + '_' + toks[0][-1])
+            if toks[0][-1] != "a":
+                pt_name.append("b" + toks[0][-3] + "_" + toks[0][-1])
             else:
-                pt_name.append('b' + toks[0][-2])
+                pt_name.append("b" + toks[0][-2])
 
-            if 'res' in toks[0]:
-                layer_type = 'conv'
-                last_name = 'weight'
+            if "res" in toks[0]:
+                layer_type = "conv"
+                last_name = "weight"
 
             else:  # 'bn' in toks[0]:
-                layer_type = 'bn'
+                layer_type = "bn"
                 last_name = bn_param_mx_pt[toks[-1]]
 
-            pt_name.append(layer_type + '_' + toks[1])
+            pt_name.append(layer_type + "_" + toks[1])
 
             pt_name.append(last_name)
 
-            torch_name = '.'.join(pt_name)
+            torch_name = ".".join(pt_name)
             renamed_dict[torch_name] = v
 
         else:
             last_name = bn_param_mx_pt[toks[-1]]
-            renamed_dict['bn7.' + last_name] = v
+            renamed_dict["bn7." + last_name] = v
 
     return renamed_dict
-
-
-
-
-
-
-
-
-
 
 
 class Net(Net_ori):
@@ -279,10 +315,14 @@ class Net(Net_ori):
         self.fc8 = nn.Conv2d(4096, 20, 1, bias=False)
         torch.nn.init.xavier_uniform_(self.fc8.weight)
 
-        self.fc8_seg_conv1 = nn.Conv2d(4096, 512, (3, 3), stride=1, padding=12, dilation=12, bias=True)
+        self.fc8_seg_conv1 = nn.Conv2d(
+            4096, 512, (3, 3), stride=1, padding=12, dilation=12, bias=True
+        )
         torch.nn.init.xavier_uniform_(self.fc8_seg_conv1.weight)
 
-        self.fc8_seg_conv2 = nn.Conv2d(512, 21, (3, 3), stride=1, padding=12, dilation=12, bias=True)
+        self.fc8_seg_conv2 = nn.Conv2d(
+            512, 21, (3, 3), stride=1, padding=12, dilation=12, bias=True
+        )
         torch.nn.init.xavier_uniform_(self.fc8_seg_conv2.weight)
 
         # self.not_training = [self.conv1a]
@@ -290,8 +330,7 @@ class Net(Net_ori):
         # self.from_scratch_layers = []
         self.from_scratch_layers = [self.fc8, self.fc8_seg_conv1, self.fc8_seg_conv2]
 
-
-    def forward(self, x, require_seg = True, require_mcam = True):
+    def forward(self, x, require_seg=True, require_mcam=True):
         x = super().forward(x)
         if require_seg == True and require_mcam == True:
             x_cam = x.clone()
@@ -299,8 +338,7 @@ class Net(Net_ori):
 
             x = self.dropout7(x)
 
-            x = F.avg_pool2d(
-                x, kernel_size=(x.size(2), x.size(3)), padding=0)
+            x = F.avg_pool2d(x, kernel_size=(x.size(2), x.size(3)), padding=0)
 
             x = self.fc8(x)
             x = x.view(x.size(0), -1)
@@ -313,7 +351,7 @@ class Net(Net_ori):
             x_seg = self.fc8_seg_conv2(x_seg)
 
             return x, cam, x_seg
-        elif require_mcam == True and require_seg== False:
+        elif require_mcam == True and require_seg == False:
             x_cam = x.clone()
             cam = F.conv2d(x_cam, self.fc8.weight)
             cam = F.relu(cam)
@@ -368,49 +406,76 @@ class SegNet(Net):
     def forward(self, x, require_seg=True, require_mcam=True, require_cam=False):
 
         if require_cam and require_seg:
-            xf, cam, seg = super().forward(x,require_seg=True, require_mcam=True)
+            xf, cam, seg = super().forward(x, require_seg=True, require_mcam=True)
             return xf, cam, seg
 
         if require_seg and require_mcam:
             input_size_h = x.size()[2]
             input_size_w = x.size()[3]
 
-            x2 = F.interpolate(x, size=(int(input_size_h * 0.5), int(input_size_w * 0.5)), mode='bilinear',align_corners=False)
-            x3 = F.interpolate(x, size=(int(input_size_h * 1.5), int(input_size_w * 1.5)), mode='bilinear',align_corners=False)
-            x4 = F.interpolate(x, size=(int(input_size_h * 2), int(input_size_w * 2)), mode='bilinear',align_corners=False)
+            x2 = F.interpolate(
+                x,
+                size=(int(input_size_h * 0.5), int(input_size_w * 0.5)),
+                mode="bilinear",
+                align_corners=False,
+            )
+            x3 = F.interpolate(
+                x,
+                size=(int(input_size_h * 1.5), int(input_size_w * 1.5)),
+                mode="bilinear",
+                align_corners=False,
+            )
+            x4 = F.interpolate(
+                x,
+                size=(int(input_size_h * 2), int(input_size_w * 2)),
+                mode="bilinear",
+                align_corners=False,
+            )
 
             seg = []
             with torch.enable_grad():
-                xf1, cam1, seg1 = super().forward(x,require_seg=True, require_mcam=True)
+                xf1, cam1, seg1 = super().forward(
+                    x, require_seg=True, require_mcam=True
+                )
             with torch.no_grad():
-                cam2 = super().forward(x2,require_seg=False, require_mcam=True)
-                cam3 = super().forward(x3,require_seg=False, require_mcam=True)
-                cam4 = super().forward(x4,require_seg=False, require_mcam=True)
+                cam2 = super().forward(x2, require_seg=False, require_mcam=True)
+                cam3 = super().forward(x3, require_seg=False, require_mcam=True)
+                cam4 = super().forward(x4, require_seg=False, require_mcam=True)
 
             xf_temp = xf1
 
-            cam2 = F.interpolate(cam2, size=(int(seg1.shape[2]), int(seg1.shape[3])), mode='bilinear',align_corners=False)
-            cam3 = F.interpolate(cam3, size=(int(seg1.shape[2]), int(seg1.shape[3])), mode='bilinear',align_corners=False)
-            cam4 = F.interpolate(cam4, size=(int(seg1.shape[2]), int(seg1.shape[3])), mode='bilinear',align_corners=False)
+            cam2 = F.interpolate(
+                cam2,
+                size=(int(seg1.shape[2]), int(seg1.shape[3])),
+                mode="bilinear",
+                align_corners=False,
+            )
+            cam3 = F.interpolate(
+                cam3,
+                size=(int(seg1.shape[2]), int(seg1.shape[3])),
+                mode="bilinear",
+                align_corners=False,
+            )
+            cam4 = F.interpolate(
+                cam4,
+                size=(int(seg1.shape[2]), int(seg1.shape[3])),
+                mode="bilinear",
+                align_corners=False,
+            )
 
-            cam = (cam1+cam2+cam3+cam4)/4
+            cam = (cam1 + cam2 + cam3 + cam4) / 4
 
             seg.append(seg1)  # for original scale
 
             return xf_temp, cam, seg
 
-
-
         if require_mcam == False and require_seg == False:
-            xf = super().forward(x,require_seg=False,require_mcam=False)
+            xf = super().forward(x, require_seg=False, require_mcam=False)
             self.not_training = [self.conv1a]
             return xf
         if require_mcam == False and require_seg == True:
             xf, cam, seg = super().forward(x, require_seg=True, require_mcam=True)
             return seg
-
-
-
 
     def get_parameter_groups(self):
         groups = ([], [], [], [])
