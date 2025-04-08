@@ -62,7 +62,6 @@ class PolyOptimizer_adam(torch.optim.Adam):
 
 
 def make_path_with_log(args):
-
     exp_path = osp.join(os.getenv("EXPERIMENT_DIR"), args.name)
     ckpt_path = osp.join(exp_path, "ckpt")
     train_path = osp.join(exp_path, "train")
@@ -82,8 +81,7 @@ def make_path_with_log(args):
 
     for alpha in args.alphas:
         crf_alpha_path = osp.join(crf_path, str(alpha).zfill(2))
-        if not os.path.exists(crf_alpha_path):
-            os.makedirs(crf_alpha_path)
+        os.makedirs(crf_alpha_path, exist_ok=True)
 
     return (
         exp_path,

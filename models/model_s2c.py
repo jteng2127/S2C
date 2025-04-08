@@ -5,6 +5,7 @@ import glob
 import random
 import pdb
 
+import comet_ml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -51,7 +52,7 @@ def set_grad(nets, requires_grad=False):
 
 class model_WSSS:
 
-    def __init__(self, args, logger=None, writer=None):
+    def __init__(self, args, logger=None, comet_logger=None):
 
         self.args = args
         self.categories = [
@@ -85,8 +86,8 @@ class model_WSSS:
         self.bs = args.batch_size
         if logger is not None:
             self.logger = logger
-        if writer is not None:
-            self.writer = writer
+        if comet_logger is not None:
+            self.comet_logger = comet_logger
 
         # Attributes
         self.C = args.C  # Number of classes - VOC : 20
@@ -491,7 +492,7 @@ class model_WSSS:
         vis=False,
         dict=False,
         crf=False,
-        writer=None,
+        comet_logger: comet_ml.Experiment = None,
     ):
 
         if self.phase != "eval":
@@ -544,8 +545,10 @@ class model_WSSS:
                     epo_str + "_" + self.name + "_cam_" + self.categories[c] + ".png",
                 )
                 plt.imsave(temp_path, np.transpose(temp, (1, 2, 0)))
-                if writer is not None:
-                    writer.add_image(self.name + "/" + self.categories[c], temp, epo)
+                if comet_logger is not None:
+                    comet_logger.log_image(
+                        self.name + "/" + self.categories[c], temp, step=epo
+                    )
 
         if dict:
             np.save(osp.join(dict_path, self.name + ".npy"), self.cam_dict)
@@ -558,7 +561,7 @@ class model_WSSS:
                 )
 
     # Print loss/accuracy (and re-initialize them)
-    def print_log(self, epo, iter, writer):
+    def print_log(self, epo, iter, comet_logger: comet_ml.Experiment):
 
         loss_str = ""
         acc_str = ""
@@ -570,10 +573,10 @@ class model_WSSS:
                 + str(round(self.running_loss[i] / self.count, 5))
                 + ", "
             )
-            writer.add_scalar(
-                "Loss/" + self.loss_names[i],
+            comet_logger.log_metric(
+                f"Loss/{self.loss_names[i]}",
                 round(self.running_loss[i] / self.count, 5),
-                iter,
+                step=iter,
             )
 
         for i in range(len(self.acc_names)):
@@ -585,7 +588,9 @@ class model_WSSS:
                 )
                 acc_str += self.acc_names[i] + " : " + str(round(acc, 2)) + ", "
                 self.accs[i] = acc
-                writer.add_scalar("Acc/" + self.acc_names[i], round(acc, 2), iter)
+                comet_logger.log_metric(
+                    f"Acc/{self.acc_names[i]}", round(acc, 2), step=iter
+                )
 
         self.logger.info(loss_str[:-2])
         self.logger.info(acc_str[:-2])

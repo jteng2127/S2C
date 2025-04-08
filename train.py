@@ -19,6 +19,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
+from comet_ml import Experiment
 
 from matplotlib import pyplot as plt
 
@@ -91,6 +92,34 @@ def init_seed(seed: float):
     random.seed(seed)
 
 
+def setup_logger(logger_name, log_file, level=logging.INFO):
+    logger = logging.getLogger(logger_name)
+    console_handler = logging.StreamHandler()
+    file_handler = logging.FileHandler(log_file)
+    formatter = logging.Formatter(
+        "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
+    )
+
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+
+    logger.setLevel(level)
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+
+    return logger
+
+
+def get_comet_logger():
+    experiment = Experiment(
+        api_key=os.getenv("COMET_API_KEY"),
+        project_name=os.getenv("COMET_PROJECT_NAME"),
+        workspace=os.getenv("COMET_WORKSPACE"),
+    )
+
+    return experiment
+
+
 if __name__ == "__main__":
 
     categories = [
@@ -118,6 +147,7 @@ if __name__ == "__main__":
 
     args = get_args()
     init_seed(args.seed)
+
     (
         exp_path,
         ckpt_path,
@@ -132,15 +162,8 @@ if __name__ == "__main__":
     # Logger
     if osp.isfile(log_path):
         os.remove(log_path)
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    console_handler = logging.StreamHandler()
-    logger.addHandler(console_handler)
-    file_handler = logging.FileHandler(log_path)
-    logger.addHandler(file_handler)
-
-    # Tensorboard
-    writer = SummaryWriter(log_dir=exp_path)
+    logger = setup_logger(__name__, log_path)
+    comet_logger = get_comet_logger()
 
     logger.info("-" * 52 + " SETUP " + "-" * 52)
     for arg in vars(args):
@@ -182,7 +205,7 @@ if __name__ == "__main__":
     # Load Model
     model = getattr(
         importlib.import_module("models.model_" + args.model), "model_WSSS"
-    )(args, logger=logger, writer=writer)
+    )(args, logger=logger, comet_logger=comet_logger)
     os.system("cp ./models/model_" + args.model + ".py " + exp_path + "/")
 
     #
@@ -212,7 +235,7 @@ if __name__ == "__main__":
             model.unpack(pack)
             model.update(epo, iter)
             if iter % args.print_freq == 0 and iter != 0:
-                model.print_log(epo + 1, count, writer)
+                model.print_log(epo + 1, count, comet_logger)
 
             count += 1
 
@@ -238,7 +261,7 @@ if __name__ == "__main__":
                     vis=(iter < 20),
                     dict=args.dict,
                     crf=args.crf,
-                    writer=writer,
+                    comet_logger=comet_logger,
                 )
 
             # Evaluate mIoU
@@ -268,7 +291,7 @@ if __name__ == "__main__":
                 max_miou = miou_temp
                 logger.info("New record!")
 
-            writer.add_scalar("val/miou", round(miou_temp, 3), epo)
-            writer.add_scalar("val/th", round(th_temp, 3), epo)
-            writer.add_scalar("val/precision", round(mp_temp, 3), epo)
-            writer.add_scalar("val/recall", round(mr_temp, 3), epo)
+            comet_logger.log_metric("val/miou", round(miou_temp, 3), epo)
+            comet_logger.log_metric("val/th", round(th_temp, 3), epo)
+            comet_logger.log_metric("val/precision", round(mp_temp, 3), epo)
+            comet_logger.log_metric("val/recall", round(mr_temp, 3), epo)

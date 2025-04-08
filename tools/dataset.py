@@ -25,7 +25,7 @@ class FoodDataset(data.Dataset):
         a default transform is applied to convert PIL Image to Tensor.
     """
 
-    def __init__(self, root: str, transform):
+    def __init__(self, root: str, transform=None):
 
         self.transform = transform
 
