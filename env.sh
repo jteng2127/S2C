@@ -6,6 +6,7 @@ eval "$(conda shell.bash hook)"
 
 conda create -n S2C python=3.8.18
 conda activate S2C
+conda config --env --add channels conda-forge
 
 # numpy np.bool is removed in 1.24
 # conda install pytorch==1.8.1 torchvision==0.9.1 torchaudio==0.8.1 cudatoolkit=11.1 numpy=1.22.3 -c nvidia -c pytorch -c conda-forge
