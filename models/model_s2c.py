@@ -5,7 +5,7 @@ import glob
 import random
 import pdb
 
-import comet_ml
+from comet_ml import Experiment
 import numpy as np
 import torch
 import torch.nn as nn
@@ -24,7 +24,6 @@ import matplotlib
 matplotlib.use("Agg")
 from torchvision import transforms
 
-import voc12.data
 from tools import utils, pyutils
 from tools.imutils import save_img, denorm, _crf_with_alpha, cam_on_image, voc_palette
 
@@ -87,7 +86,7 @@ class model_WSSS:
         if logger is not None:
             self.logger = logger
         if comet_logger is not None:
-            self.comet_logger = comet_logger
+            self.comet_logger: Experiment = comet_logger
 
         # Attributes
         self.C = args.C  # Number of classes - VOC : 20
@@ -451,15 +450,12 @@ class model_WSSS:
             self.loss_cpm = torch.zeros_like(self.loss_cls)
 
         # Accumulate individual losses
-        self.running_loss[
-            0
-        ] += self.loss_cls.item()  # loss_cls corresponds to 'loss_cls'
-        self.running_loss[
-            1
-        ] += self.loss_ssc.item()  # loss_ssc corresponds to 'loss_ssc'
-        self.running_loss[
-            2
-        ] += self.loss_cpm.item()  # loss_cpm corresponds to 'loss_cpm'
+        # loss_cls corresponds to 'loss_cls'
+        self.running_loss[0] += self.loss_cls.item()
+        # loss_ssc corresponds to 'loss_ssc'
+        self.running_loss[1] += self.loss_ssc.item()
+        # loss_cpm corresponds to 'loss_cpm'
+        self.running_loss[2] += self.loss_cpm.item()
 
         # label-based accuracy
         with torch.no_grad():
@@ -492,7 +488,7 @@ class model_WSSS:
         vis=False,
         dict=False,
         crf=False,
-        comet_logger: comet_ml.Experiment = None,
+        comet_logger: Experiment = None,
     ):
 
         if self.phase != "eval":
@@ -561,7 +557,7 @@ class model_WSSS:
                 )
 
     # Print loss/accuracy (and re-initialize them)
-    def print_log(self, epo, iter, comet_logger: comet_ml.Experiment):
+    def print_log(self, epo, iter, comet_logger: Experiment):
 
         loss_str = ""
         acc_str = ""

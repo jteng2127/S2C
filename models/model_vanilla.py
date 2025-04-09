@@ -23,7 +23,6 @@ import matplotlib
 matplotlib.use("Agg")
 from torchvision import transforms
 
-import voc12.data
 from tools import utils, pyutils
 from tools.imutils import save_img, denorm, _crf_with_alpha, cam_on_image
 
