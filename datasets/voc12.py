@@ -176,6 +176,7 @@ class VOC12ClsDatasetMSF(VOC12ClsDataset):
         img = pack["img"]
         label = pack["label"]
 
+        # resize to different scales
         rounded_size = (
             int(round(img.size[0] / self.unit) * self.unit),
             int(round(img.size[1] / self.unit) * self.unit),
@@ -187,10 +188,12 @@ class VOC12ClsDatasetMSF(VOC12ClsDataset):
             s_img = img.resize(target_size, resample=PIL.Image.CUBIC)
             ms_img_list.append(s_img)
 
+        # to np, scale to [0, 1], normalize, HWC to CHW
         if self.inter_transform:
             for i in range(len(ms_img_list)):
                 ms_img_list[i] = self.inter_transform(ms_img_list[i])
 
+        # add horizontal flip
         msf_img_list = []
         for i in range(len(ms_img_list)):
             msf_img_list.append(ms_img_list[i])

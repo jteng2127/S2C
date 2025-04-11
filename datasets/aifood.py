@@ -10,7 +10,7 @@ import torchvision.transforms.functional as F
 from torchvision import transforms
 
 
-class FoodDatasetWithSE(Dataset):
+class FoodDataset(Dataset):
     """
     Dataset containing SingleFood and AIFood
     
@@ -25,27 +25,10 @@ class FoodDatasetWithSE(Dataset):
     def __init__(
         self,
         dataset_root: str,
-        se_root: str,
         img_csv: str,
-        random_crop_size: Tuple[int, int],
-        random_resize_long_side_range: Tuple[int, int] = None,
-        color_jitter_brightness: float = None,
-        color_jitter_contrast: float = None,
-        color_jitter_saturation: float = None,
-        color_jitter_hue: float = None,
     ):
         self.dataset_root = dataset_root
-        self.se_root = se_root
         self.datalist = self._get_datalist(img_csv)
-
-        self.random_crop_size = random_crop_size
-        self.random_resize_long_side_range = random_resize_long_side_range
-        self.color_jitter_transform = transforms.ColorJitter(
-            brightness=color_jitter_brightness,
-            contrast=color_jitter_contrast,
-            saturation=color_jitter_saturation,
-            hue=color_jitter_hue,
-        )
 
     def _get_datalist(self, img_csv: str) -> List[Tuple[str, List[int]]]:
         datalist = []
@@ -55,6 +38,90 @@ class FoodDatasetWithSE(Dataset):
             for img_rel_path, *label in csv_reader:
                 datalist.append((img_rel_path, list(int(i) for i in label)))
         return datalist
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        """
+        Get an image from dataset
+        Args:
+            index (int): Index of the image in the dataset
+        Returns:
+            pack `Dict[str, Any]`: Dictionary containing image(PIL.Image.Image), one-hot label(torch.Tensor) and name(str)
+        """
+        img_rel_path, label = self.datalist[index]
+        img_path = os.path.join(self.dataset_root, img_rel_path)
+
+        img = Image.open(img_path).convert("RGB")
+
+        pack = {
+            "img": img,
+            "label": torch.tensor(label).float(),
+            "name": img_rel_path,
+        }
+        return pack
+
+    def __len__(self):
+        return len(self.datalist)
+
+
+class FoodDatasetWithSE(FoodDataset):
+    def __init__(
+        self,
+        dataset_root: str,
+        se_root: str,
+        img_csv: str,
+    ):
+        super().__init__(dataset_root, img_csv)
+        self.se_root = se_root
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        """
+        Get an image from dataset
+        Args:
+            index (int): Index of the image in the dataset
+        Returns:
+            pack `Dict[str, Any]`: Dictionary containing image(PIL.Image.Image), se(numpy.ndarray), one-hot label(torch.Tensor) and name(str)
+        """
+        pack = super().__getitem__(index)
+        img = pack["img"]
+        img_rel_path = pack["name"]
+        label = pack["label"]
+
+        se_path = os.path.join(self.se_root, img_rel_path)
+        se_path = os.path.splitext(se_path)[0] + ".npy"
+        se = np.load(se_path)
+
+        pack = {
+            "img": img,
+            "se": se,
+            "label": label,
+            "name": img_rel_path,
+        }
+        return pack
+
+
+class FoodDatasetWithSETrain(FoodDatasetWithSE):
+    def __init__(
+        self,
+        dataset_root: str,
+        se_root: str,
+        img_csv: str,
+        random_crop_size: Tuple[int, int],
+        random_resize_long_side_range: Tuple[int, int] = None,
+        color_jitter_brightness: float = None,
+        color_jitter_contrast: float = None,
+        color_jitter_saturation: float = None,
+        color_jitter_hue: float = None,
+    ):
+        super().__init__(dataset_root, se_root, img_csv)
+
+        self.random_crop_size = random_crop_size
+        self.random_resize_long_side_range = random_resize_long_side_range
+        self.color_jitter_transform = transforms.ColorJitter(
+            brightness=color_jitter_brightness,
+            contrast=color_jitter_contrast,
+            saturation=color_jitter_saturation,
+            hue=color_jitter_hue,
+        )
 
     def _transform(self, img: Image.Image, se: np.ndarray):
         """
@@ -70,7 +137,6 @@ class FoodDatasetWithSE(Dataset):
         se = (se + 1).astype(np.uint8)  # [0, segmentation_objects]
         se = np.expand_dims(se, axis=2)
         se = np.repeat(se, 3, axis=2)
-        print(np.unique(se))
         se = Image.fromarray(se)
 
         # random resize
@@ -150,23 +216,78 @@ class FoodDatasetWithSE(Dataset):
         Return:
             pack `Dict[str, Any]`: Dictionary containing image(Tensor), se(Tensor), one-hot label(Tensor) and name(str)
         """
-        img_rel_path, label = self.datalist[index]
-        img_path = os.path.join(self.dataset_root, img_rel_path)
-        se_path = os.path.join(self.se_root, img_rel_path)
-        se_path = os.path.splitext(se_path)[0] + ".npy"
-
-        img = Image.open(img_path).convert("RGB")
-        se = np.load(se_path)
+        pack = super().__getitem__(index)
+        img = pack["img"]
+        se = pack["se"]
+        label = pack["label"]
+        img_rel_path = pack["name"]
 
         img, se = self._transform(img, se)
 
         pack = {
             "img": img,
             "se": se,
-            "label": torch.tensor(label),
+            "label": label,
             "name": img_rel_path,
         }
         return pack
 
     def __len__(self):
         return len(self.datalist)
+
+
+class FoodDatasetWithSEVal(FoodDatasetWithSE):
+    def __init__(
+        self,
+        dataset_root: str,
+        se_root: str,
+        img_csv: str,
+        scales: List[float],
+    ):
+        super().__init__(dataset_root, se_root, img_csv)
+
+        self.scales = scales
+
+    def _generate_img(self, img):
+        scaled_imgs = []
+        for scale in self.scales:
+            scaled_img = img.resize(
+                (round(img.size[0] * scale), round(img.size[1] * scale)),
+                resample=Image.CUBIC,
+            )
+            scaled_imgs.append(scaled_img)
+
+        filpped_imgs = []
+        for img in scaled_imgs:
+            img = F.to_tensor(img)
+            img = F.normalize(
+                img,
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            )
+            flipped_img = F.hflip(img)
+
+            filpped_imgs.append(img)
+            filpped_imgs.append(flipped_img)
+        return filpped_imgs
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        pack = super().__getitem__(index)
+        img = pack["img"]
+        se = pack["se"]
+        label = pack["label"]
+        img_rel_path = pack["name"]
+
+        # generate img
+        img = self._generate_img(img)
+
+        se = torch.from_numpy(se)
+        se_flipped = torch.flip(se, dims=(1,))
+
+        pack = {
+            "img": img,
+            "se": [se, se_flipped],
+            "label": label,
+            "name": img_rel_path,
+        }
+        return pack
